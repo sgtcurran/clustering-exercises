@@ -191,17 +191,33 @@ def get_zillow_all():
 
 
     query = '''
-    SELECT *
-    FROM properties_2017
-    LEFT JOIN airconditioningtype USING (`airconditioningtypeid`)
-    LEFT JOIN architecturalstyletype USING (`architecturalstyletypeid`)
-    LEFT JOIN buildingclasstype USING (`buildingclasstypeid`)
-    LEFT JOIN heatingorsystemtype USING (`heatingorsystemtypeid`)
-    LEFT JOIN propertylandusetype USING (`propertylandusetypeid`)
-    LEFT JOIN storytype USING (`storytypeid`)
-    LEFT JOIN typeconstructiontype USING (`typeconstructiontypeid`)
-    JOIN predictions_2017 ON properties_2017.parcelid = predictions_2017.parcelid 
-    AND predictions_2017.transactiondate LIKE '2017%%'
+    SELECT
+    prop.*,
+    predictions_2017.logerror,
+    predictions_2017.transactiondate,
+    air.airconditioningdesc,
+    arch.architecturalstyledesc,
+    build.buildingclassdesc,
+    heat.heatingorsystemdesc,
+    landuse.propertylandusedesc,
+    story.storydesc,
+    construct.typeconstructiondesc
+    FROM properties_2017 prop
+    JOIN (
+    SELECT parcelid, MAX(transactiondate) AS max_transactiondate
+    FROM predictions_2017
+    GROUP BY parcelid
+    ) pred USING(parcelid)
+    JOIN predictions_2017 ON pred.parcelid = predictions_2017.parcelid
+                      AND pred.max_transactiondate = predictions_2017.transactiondate
+    LEFT JOIN airconditioningtype air USING (airconditioningtypeid)
+    LEFT JOIN architecturalstyletype arch USING (architecturalstyletypeid)
+    LEFT JOIN buildingclasstype build USING (buildingclasstypeid)
+    LEFT JOIN heatingorsystemtype heat USING (heatingorsystemtypeid)
+    LEFT JOIN propertylandusetype landuse USING (propertylandusetypeid)
+    LEFT JOIN storytype story USING (storytypeid)
+    LEFT JOIN typeconstructiontype construct USING (typeconstructiontypeid)
+    WHERE prop.latitude IS NOT NULL AND prop.longitude IS NOT NULL AND transactiondate <= '2017-12-31' AND propertylandusetypeid = '261'
     '''
     print('Getting a fresh copy from SQL database...')
     df = pd.read_sql(query, url)
